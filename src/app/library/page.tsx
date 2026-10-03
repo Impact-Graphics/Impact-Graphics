@@ -27,7 +27,7 @@ export default async function LibraryPage() {
 
     // Fetch auth user + their favorites (if logged in)
     let userId: string | null = null;
-    let favoritedIds = new Set<string>();
+    let favoritedIds: string[] = [];
 
     try {
         const authClient = await createClient();
@@ -41,7 +41,7 @@ export default async function LibraryPage() {
                 .eq("user_id", user.id);
 
             if (favs) {
-                favoritedIds = new Set(favs.map((f) => f.prompt_id));
+                favoritedIds = favs.map((f) => f.prompt_id);
             }
         }
     } catch {

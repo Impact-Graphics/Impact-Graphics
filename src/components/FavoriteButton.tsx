@@ -1,14 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Heart } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { createClient } from "@supabase/supabase-js";
-
-const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+import { createClient } from "@/utils/supabase/client";
 
 interface FavoriteButtonProps {
     promptId: string;
@@ -28,6 +23,10 @@ export default function FavoriteButton({
     const [isFavorited, setIsFavorited] = useState(initialFavorited);
     const [loading, setLoading] = useState(false);
 
+    useEffect(() => {
+        setIsFavorited(initialFavorited);
+    }, [initialFavorited]);
+
     async function handleClick(e: React.MouseEvent) {
         e.preventDefault();
         e.stopPropagation();
@@ -45,6 +44,7 @@ export default function FavoriteButton({
         setLoading(true);
 
         try {
+            const supabase = createClient();
             if (next) {
                 // Add favorite
                 const { error } = await supabase
@@ -61,7 +61,8 @@ export default function FavoriteButton({
                 if (error) throw error;
             }
             onToggle?.(next);
-        } catch {
+        } catch (error) {
+            console.error("Error toggling favorite:", error);
             // Revert optimistic update on failure
             setIsFavorited(!next);
         } finally {

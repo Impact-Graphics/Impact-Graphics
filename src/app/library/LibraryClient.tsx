@@ -9,11 +9,12 @@ interface LibraryClientProps {
     prompts: Prompt[];
     categories: string[];
     userId: string | null;
-    favoritedIds: Set<string>;
+    favoritedIds: string[];
 }
 
 export default function LibraryClient({ prompts, categories, userId, favoritedIds }: LibraryClientProps) {
     const [activeCategory, setActiveCategory] = useState("All");
+    const favSet = new Set(favoritedIds);
 
     const filteredPrompts =
         activeCategory === "All"
@@ -54,7 +55,7 @@ export default function LibraryClient({ prompts, categories, userId, favoritedId
                         <PromptCard
                             key={prompt.slug}
                             prompt={prompt}
-                            isFavorited={favoritedIds.has(prompt.id)}
+                            isFavorited={favSet.has(prompt.id)}
                             userId={userId}
                         />
                     ))}
