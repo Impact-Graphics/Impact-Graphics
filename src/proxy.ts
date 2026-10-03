@@ -25,14 +25,21 @@ export async function proxy(request: NextRequest) {
         }
     )
 
-    // Refresh session without blocking — fire and forget
-    // Only redirect to /login if accessing /dashboard without a user
     try {
         const { data: { user } } = await supabase.auth.getUser()
+        const pathname = request.nextUrl.pathname
 
-        if (!user && request.nextUrl.pathname.startsWith('/dashboard')) {
+        // If user is not logged in and tries to access /dashboard, redirect to /login
+        if (!user && pathname.startsWith('/dashboard')) {
             const url = request.nextUrl.clone()
             url.pathname = '/login'
+            return NextResponse.redirect(url)
+        }
+
+        // If user IS logged in and tries to access /login or /signup, redirect to /dashboard
+        if (user && (pathname === '/login' || pathname === '/signup')) {
+            const url = request.nextUrl.clone()
+            url.pathname = '/dashboard'
             return NextResponse.redirect(url)
         }
     } catch {
