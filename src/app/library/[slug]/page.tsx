@@ -1,8 +1,10 @@
-import { prompts } from "@/data/prompts";
+import { createPublicClient } from "@/utils/supabase/public";
+import { createClient } from "@/utils/supabase/server";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Sparkles, AlertCircle, TrendingUp, Cpu } from "lucide-react";
 import CopyButton from "@/components/CopyButton";
+import FavoriteButton from "@/components/FavoriteButton";
 
 export default async function PromptDetailPage({
     params,
@@ -10,10 +12,41 @@ export default async function PromptDetailPage({
     params: Promise<{ slug: string }>;
 }) {
     const { slug } = await params;
-    const prompt = prompts.find((p) => p.slug === slug);
+
+    // Fetch prompt with public client
+    const supabase = createPublicClient();
+    const { data: prompt } = await supabase
+        .from("prompts")
+        .select("*")
+        .eq("slug", slug)
+        .eq("status", "published")
+        .single();
 
     if (!prompt) {
         notFound();
+    }
+
+    // Fetch auth user + check if this prompt is favorited
+    let userId: string | null = null;
+    let isFavorited = false;
+
+    try {
+        const authClient = await createClient();
+        const { data: { user } } = await authClient.auth.getUser();
+
+        if (user) {
+            userId = user.id;
+            const { data: fav } = await authClient
+                .from("favorites")
+                .select("id")
+                .eq("user_id", user.id)
+                .eq("prompt_id", prompt.id)
+                .maybeSingle();
+
+            isFavorited = !!fav;
+        }
+    } catch {
+        // Not logged in — continue without favorites
     }
 
     const isPremium = prompt.access === "Premium";
@@ -42,7 +75,20 @@ export default async function PromptDetailPage({
                         </span>
                     </div>
 
-                    <h1 className="text-3xl md:text-5xl font-black mb-4 leading-tight">{prompt.title}</h1>
+                    {/* Title row with Favorite button */}
+                    <div className="flex items-start justify-between gap-4 mb-4">
+                        <h1 className="text-3xl md:text-5xl font-black leading-tight flex-1">
+                            {prompt.title}
+                        </h1>
+                        <div className="mt-1 shrink-0">
+                            <FavoriteButton
+                                promptId={prompt.id}
+                                userId={userId}
+                                initialFavorited={isFavorited}
+                            />
+                        </div>
+                    </div>
+
                     <p className="text-lg text-gray-600 font-medium mb-10">{prompt.description}</p>
 
                     {/* Top Attributes */}
@@ -55,7 +101,7 @@ export default async function PromptDetailPage({
                         <div className="flex items-center gap-2">
                             <Cpu className="w-5 h-5 text-gray-400" />
                             <span className="font-bold text-gray-custom">AI Tool:</span>
-                            <span className="font-black text-dark">{prompt.aiTool}</span>
+                            <span className="font-black text-dark">{prompt.ai_tool}</span>
                         </div>
                         <div className="flex items-center gap-2">
                             <TrendingUp className="w-5 h-5 text-gray-400" />
