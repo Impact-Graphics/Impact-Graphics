@@ -2,14 +2,13 @@
 
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
-
 import { createClient } from '@/utils/supabase/server'
 
 export async function login(formData: FormData) {
     const supabase = await createClient()
 
-    const email = formData.get('email') as string
-    const password = formData.get('password') as string
+    const email = (formData.get('email') as string || '').trim()
+    const password = formData.get('password') as string || ''
 
     if (!email || !password) {
         return { error: 'Email and password are required' }
@@ -21,7 +20,20 @@ export async function login(formData: FormData) {
     })
 
     if (error) {
-        return { error: error.message }
+        const msg = error.message.toLowerCase()
+        if (msg.includes('invalid login credentials')) {
+            return {
+                error: 'Invalid email or password. Please check your credentials or create an account if you are new.',
+                email,
+            }
+        }
+        if (msg.includes('email not confirmed')) {
+            return {
+                error: 'Your email address has not been confirmed yet. Please check your inbox for the confirmation link.',
+                email,
+            }
+        }
+        return { error: error.message, email }
     }
 
     revalidatePath('/', 'layout')
@@ -31,30 +43,59 @@ export async function login(formData: FormData) {
 export async function signup(formData: FormData) {
     const supabase = await createClient()
 
-    const email = formData.get('email') as string
-    const password = formData.get('password') as string
-    const confirmPassword = formData.get('confirmPassword') as string
+    const email = (formData.get('email') as string || '').trim()
+    const password = formData.get('password') as string || ''
+    const confirmPassword = formData.get('confirmPassword') as string || ''
 
+    if (!email) {
+        return { error: 'Email address is required' }
+    }
+    if (!password) {
+        return { error: 'Password is required' }
+    }
     if (password !== confirmPassword) {
-        return { error: 'Passwords do not match' }
+        return { error: 'Passwords do not match', email }
     }
     if (password.length < 6) {
-        return { error: 'Password must be at least 6 characters' }
-    }
-    if (!email) {
-        return { error: 'Email is required' }
+        return { error: 'Password must be at least 6 characters long', email }
     }
 
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
         email,
         password,
     })
 
     if (error) {
-        return { error: error.message }
+        const msg = error.message.toLowerCase()
+        if (msg.includes('already registered') || msg.includes('user_already_exists') || msg.includes('already exists')) {
+            return {
+                error: 'An account with this email already exists.',
+                accountExists: true,
+                email,
+            }
+        }
+        return { error: error.message, email }
     }
 
-    return { success: 'Check your email to confirm your account' }
+    // Supabase security check: if user already exists, identities array is empty []
+    if (data.user && data.user.identities && data.user.identities.length === 0) {
+        return {
+            error: 'An account with this email already exists.',
+            accountExists: true,
+            email,
+        }
+    }
+
+    // If auto-confirm is enabled or session is created immediately, redirect to dashboard
+    if (data.session) {
+        revalidatePath('/', 'layout')
+        redirect('/dashboard')
+    }
+
+    return {
+        success: 'Account created! Please check your email to confirm your account, or log in if confirmation is complete.',
+        email,
+    }
 }
 
 export async function logout() {
