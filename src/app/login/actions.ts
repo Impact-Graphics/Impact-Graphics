@@ -86,12 +86,25 @@ export async function signup(formData: FormData) {
         }
     }
 
-    // If auto-confirm is enabled or session is created immediately, redirect to dashboard
+    // 1. If signUp returned an active session directly, redirect immediately to /dashboard
     if (data.session) {
         revalidatePath('/', 'layout')
         redirect('/dashboard')
     }
 
+    // 2. If no session returned yet, attempt instant signInWithPassword
+    // (This automatically logs the user in if email confirmation is disabled in Supabase!)
+    const { error: signInError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+    })
+
+    if (!signInError) {
+        revalidatePath('/', 'layout')
+        redirect('/dashboard')
+    }
+
+    // 3. If signInWithPassword failed because email confirmation is still enforced by Supabase
     return {
         success: 'Account created! Please check your email to confirm your account, or log in if confirmation is complete.',
         email,
