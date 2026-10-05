@@ -15,7 +15,6 @@ interface FavoriteButtonProps {
 
 export default function FavoriteButton({
     promptId,
-    userId,
     initialFavorited,
     onToggle,
 }: FavoriteButtonProps) {
@@ -30,11 +29,6 @@ export default function FavoriteButton({
     async function handleClick(e: React.MouseEvent) {
         e.preventDefault();
         e.stopPropagation();
-
-        if (!userId) {
-            router.push("/login");
-            return;
-        }
 
         if (loading) return;
 

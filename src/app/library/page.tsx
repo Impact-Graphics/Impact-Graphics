@@ -2,6 +2,8 @@ import { createPublicClient } from "@/utils/supabase/public";
 import { createClient } from "@/utils/supabase/server";
 import LibraryClient from "./LibraryClient";
 
+export const dynamic = 'force-dynamic';
+
 const CATEGORIES = [
     "All",
     "Logo & Brand Identity",

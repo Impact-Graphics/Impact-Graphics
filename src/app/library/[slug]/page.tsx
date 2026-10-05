@@ -6,6 +6,8 @@ import { ArrowLeft, Sparkles, AlertCircle, TrendingUp, Cpu } from "lucide-react"
 import CopyButton from "@/components/CopyButton";
 import FavoriteButton from "@/components/FavoriteButton";
 
+export const dynamic = 'force-dynamic';
+
 export default async function PromptDetailPage({
     params,
 }: {
