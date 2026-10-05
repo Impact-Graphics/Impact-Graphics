@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { Heart } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { createClient } from "@/utils/supabase/client";
+import { toggleFavoriteAction } from "@/app/actions/favorite";
 
 interface FavoriteButtonProps {
     promptId: string;
@@ -44,26 +44,27 @@ export default function FavoriteButton({
         setLoading(true);
 
         try {
-            const supabase = createClient();
-            if (next) {
-                // Add favorite
-                const { error } = await supabase
-                    .from("favorites")
-                    .insert({ user_id: userId, prompt_id: promptId });
-                if (error) throw error;
-            } else {
-                // Remove favorite
-                const { error } = await supabase
-                    .from("favorites")
-                    .delete()
-                    .eq("user_id", userId)
-                    .eq("prompt_id", promptId);
-                if (error) throw error;
+            const res = await toggleFavoriteAction(promptId);
+
+            if (res.shouldRedirectLogin) {
+                setIsFavorited(!next);
+                router.push("/login");
+                return;
             }
-            onToggle?.(next);
+
+            if (res.error) {
+                console.error("Favorite toggle failed:", res.error);
+                // Revert optimistic update on error
+                setIsFavorited(!next);
+                return;
+            }
+
+            if (typeof res.isFavorited === "boolean") {
+                setIsFavorited(res.isFavorited);
+                onToggle?.(res.isFavorited);
+            }
         } catch (error) {
-            console.error("Error toggling favorite:", error);
-            // Revert optimistic update on failure
+            console.error("Error in favorite click handler:", error);
             setIsFavorited(!next);
         } finally {
             setLoading(false);
